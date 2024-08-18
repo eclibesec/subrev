@@ -1,4 +1,4 @@
-# SubRev Cyber Penetration Testing and Investigation Tool
+# SubRev Subdomains Finder & ReverseIP Unlimited Result
 
 ## Overview
 
@@ -7,6 +7,7 @@ The **Cyber Penetration Testing and Investigation Tool** is designed to assist s
 ## Features
 
 - **Reverse IP Lookup**: Identify domains associated with a specific IP address.
+- **Priv8 Api**: using private api reverse ip & subdomain finder
 - **Subdomain Enumeration**: Discover subdomains related to a given domain.
 - **Multithreading**: Utilize multiple threads to accelerate the testing and data retrieval process.
 - **Save Results**: Automatically saves the results of the tests into an output file for analysis.
