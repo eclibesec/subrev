@@ -22,6 +22,6 @@ To use this tool, you need to register for an API key. Please register at the fo
 
 ### Additions:
 - Added a new section **API Key Registration** that directs users to register for an API key.
-- Provided a link to register at `https://www.eclipsesec.tech/user/register.php`.
+- Provided a link to register at `https://eclipsesec.tech/user/register.php`.
 
 This version includes everything required for penetration testing and investigation, along with the API key registration instructions. Let me know if this works!
