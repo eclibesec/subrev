@@ -17,11 +17,11 @@ The **Cyber Penetration Testing and Investigation Tool** is designed to assist s
 
 To use this tool, you need to register for an API key. Please register at the following link to obtain your key:
 
-[Register your API key](http://eclipsesec.my.id/user/register.php)
+[Register your API key](http://eclipsesec.tech/user/register.php)
 
 
 ### Additions:
 - Added a new section **API Key Registration** that directs users to register for an API key.
-- Provided a link to register at `https://www.eclipsesec.my.id/user/register.php`.
+- Provided a link to register at `https://www.eclipsesec.tech/user/register.php`.
 
 This version includes everything required for penetration testing and investigation, along with the API key registration instructions. Let me know if this works!
