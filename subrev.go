@@ -28,10 +28,10 @@ type DateGrabResponse struct {
 	Domains []string `json:"domains"`
 }
 type ApiKeyValidationResponse struct {
-	Author   string `json:"author"`
-	Status   string `json:"status"`
-	User     string `json:"user"`
-	Requests string `json:"requests"` 
+	Author   string          `json:"author"`
+	Status   string          `json:"status"`
+	User     string          `json:"user"`
+	Requests json.RawMessage `json:"requests"`
 }
 func clearScreen() {
 	var clearCmd *exec.Cmd
@@ -59,11 +59,9 @@ func httpGet(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("non-200 status code: %d", resp.StatusCode)
 	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -77,6 +75,19 @@ func logError(message string, err error) {
 	if err != nil {
 		fmt.Printf("ERROR: %s - %v\n", message, err)
 	}
+}
+func getRequestsAsString(data json.RawMessage) (string, error) {
+	var strVal string
+	var intVal int
+	err := json.Unmarshal(data, &strVal)
+	if err == nil {
+		return strVal, nil
+	}
+	err = json.Unmarshal(data, &intVal)
+	if err == nil {
+		return strconv.Itoa(intVal), nil
+	}
+	return "", fmt.Errorf("failed to unmarshal requests field")
 }
 func validateApiKey(apikey string) (string, bool) {
 	url := fmt.Sprintf("https://eclipsesec.tech/api/?apikey=%s&validate=true", apikey)
@@ -94,7 +105,14 @@ func validateApiKey(apikey string) (string, bool) {
 			continue
 		}
 		if validationResp.Status == "valid" {
-			_, err := strconv.Atoi(validationResp.Requests)
+			// Use the custom function to convert requests to string
+			requestsStr, err := getRequestsAsString(validationResp.Requests)
+			if err != nil {
+				logError("Failed to convert requests field", err)
+				continue
+			}
+			// You can now use requestsStr or convert it to int if needed
+			_, err = strconv.Atoi(requestsStr)
 			if err != nil {
 				logError("Failed to convert requests to int", err)
 				continue
