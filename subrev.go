@@ -1,7 +1,9 @@
 package main
+
 import (
 	"bufio"
 	"encoding/json"
+	"strconv"
 	"fmt"
 	"github.com/fatih/color"
 	"net/http"
@@ -29,7 +31,7 @@ type ApiKeyValidationResponse struct {
 	Author   string `json:"author"`
 	Status   string `json:"status"`
 	User     string `json:"user"`
-	Requests int    `json:"requests"`
+	Requests string `json:"requests"` 
 }
 func clearScreen() {
 	var clearCmd *exec.Cmd
@@ -58,6 +60,10 @@ func httpGet(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non-200 status code: %d", resp.StatusCode)
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -67,30 +73,36 @@ func httpGet(url string) ([]byte, error) {
 	}
 	return body, nil
 }
+func logError(message string, err error) {
+	if err != nil {
+		fmt.Printf("ERROR: %s - %v\n", message, err)
+	}
+}
 func validateApiKey(apikey string) (string, bool) {
 	url := fmt.Sprintf("https://eclipsesec.tech/api/?apikey=%s&validate=true", apikey)
-	var body []byte
-	var err error
 	for retries := 0; retries < 10; retries++ {
-		body, err = httpGet(url)
-		if err == nil {
-			break
+		body, err := httpGet(url)
+		if err != nil {
+			logError("API key validation failed", err)
+			time.Sleep(2 * time.Second)
+			continue
 		}
-		fmt.Printf("HTML response or error detected, retrying... (%d/10)\n", retries+1)
-		time.Sleep(2 * time.Second)
-	}
-	if err != nil {
+		var validationResp ApiKeyValidationResponse
+		err = json.Unmarshal(body, &validationResp)
+		if err != nil {
+			logError("Failed to unmarshal API key validation response", err)
+			continue
+		}
+		if validationResp.Status == "valid" {
+			_, err := strconv.Atoi(validationResp.Requests)
+			if err != nil {
+				logError("Failed to convert requests to int", err)
+				continue
+			}
+			return validationResp.User, true
+		}
 		return "", false
 	}
-	var validationResp ApiKeyValidationResponse
-	err = json.Unmarshal(body, &validationResp)
-	if err != nil {
-		return "", false
-	}
-	if validationResp.Status == "valid" {
-		return validationResp.User, true
-	}
-
 	return "", false
 }
 func openRegistrationPage() {
@@ -133,7 +145,6 @@ func reverseIP(ip, apikey string, wg *sync.WaitGroup, mu *sync.Mutex, outputFile
 	color.New(color.FgYellow).Printf("%s", ip)
 	color.New(color.FgWhite).Print(" -> ")
 	color.New(color.FgGreen).Printf("[%d domains found]\n", len(result.Domains))
-
 	for _, domain := range result.Domains {
 		outputFile.WriteString(fmt.Sprintf("%s\n", domain))
 	}
@@ -141,7 +152,6 @@ func reverseIP(ip, apikey string, wg *sync.WaitGroup, mu *sync.Mutex, outputFile
 }
 func subdomainFinder(domain, apikey string, wg *sync.WaitGroup, mu *sync.Mutex, outputFile *os.File) {
 	defer wg.Done()
-
 	var result SubdomainResponse
 	url := fmt.Sprintf("https://eclipsesec.tech/api/?subdomain=%s&apikey=%s", domain, apikey)
 	for retries := 0; retries < 5; retries++ {
@@ -149,7 +159,6 @@ func subdomainFinder(domain, apikey string, wg *sync.WaitGroup, mu *sync.Mutex, 
 		if err == nil {
 			bodyCopy := make([]byte, len(body))
 			copy(bodyCopy, body)
-
 			if len(bodyCopy) > 0 && isValidJSON(bodyCopy) {
 				err = json.Unmarshal(bodyCopy, &result)
 				if err == nil && len(result.Subdomains) > 0 {
@@ -175,12 +184,11 @@ func subdomainFinder(domain, apikey string, wg *sync.WaitGroup, mu *sync.Mutex, 
 	}
 	mu.Unlock()
 }
-func grabByDate(apikey, date string, startPage, endPage int, wg *sync.WaitGroup, resultsChan chan<- string) {
+func grabByDate(apikey, date string, startPage, endPage int, wg *sync.WaitGroup, outputFile *os.File) {
 	defer wg.Done()
 	for page := startPage; page <= endPage; page++ {
 		var result DateGrabResponse
 		url := fmt.Sprintf("https://eclipsesec.tech/api/?bydate=%s&page=%d&apikey=%s", date, page, apikey)
-
 		for retries := 0; retries < 5; retries++ {
 			body, err := httpGet(url)
 			if err == nil {
@@ -194,15 +202,13 @@ func grabByDate(apikey, date string, startPage, endPage int, wg *sync.WaitGroup,
 			time.Sleep(5 * time.Second)
 		}
 		if len(result.Domains) == 0 {
-			resultsChan <- fmt.Sprintf("page [%d] -> no domains found\n", page)
+			color.New(color.FgRed).Printf("page [%d] -> no domains found\n", page)
 			continue
 		}
-		var resultString strings.Builder
-		resultString.WriteString(fmt.Sprintf("page [%d] -> domains found [%d]\n", page, len(result.Domains)))
+		color.New(color.FgGreen).Printf("page [%d] -> domains found [%d]\n", page, len(result.Domains))
 		for _, domain := range result.Domains {
-			resultString.WriteString(fmt.Sprintf("%s\n", domain))
+			outputFile.WriteString(fmt.Sprintf("%s\n", domain))
 		}
-		resultsChan <- resultString.String()
 	}
 }
 func isValidJSON(data []byte) bool {
@@ -245,7 +251,6 @@ func main() {
 		fmt.Print("$ to page : ")
 		fmt.Scanln(&endPage)
 	}
-
 	fmt.Print("$ save to: ")
 	var outputFileName string
 	fmt.Scanln(&outputFileName)
@@ -258,7 +263,6 @@ func main() {
 		return
 	}
 	defer outputFile.Close()
-	resultsChan := make(chan string, endPage-startPage+1)
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, threadCount)
 	if choice == 1 || choice == 2 {
@@ -288,17 +292,10 @@ func main() {
 			sem <- struct{}{}
 			go func(page int) {
 				defer func() { <-sem }()
-				grabByDate(apikey, date, page, page, &wg, resultsChan)
+				grabByDate(apikey, date, page, page, &wg, outputFile)
 			}(page)
 		}
 	}
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-	for result := range resultsChan {
-		fmt.Print(result)
-		outputFile.WriteString(result)
-	}
+	wg.Wait()
 	fmt.Println("Process completed. Results saved to", outputFileName)
 }
