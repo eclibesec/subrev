@@ -11,7 +11,7 @@
 - **Remove Duplicates**: Removes duplicate entries from the output file.
 - **API Key Persistence**: The API key only needs to be entered once. It will be saved in a `config.json` file and automatically loaded in the future.
 - **Auto-Install Modules**: Automatically installs any missing Python modules (e.g., `requests`, `colorama`). If the required modules are already installed, the tool skips installation.
-
+- **Auto update**: Automatically update python & exe file
 ## Requirements
 
 - **Python**: Make sure you have Python 3.x installed on your system.
@@ -44,6 +44,7 @@ The required modules will be auto-installed if they are missing. These modules i
   - **Grab by Date**
   - **Domain to IP**
   - **Remove Duplicates**
+  - **auto update**
 3. APIKEY:
    - **On first use, the tool will prompt you to enter the API key. This key will be saved in the subrev/config.json file.**
    - **On subsequent runs, the API key will be automatically loaded.**
