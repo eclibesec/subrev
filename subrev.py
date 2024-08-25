@@ -185,7 +185,7 @@ def domain_to_ip_tool():
             if ip_address:
                 print(f"[{Fore.GREEN}{domain} -> {ip_address}{Style.RESET_ALL}]")
                 with file_lock, open(output_file_name, "a") as f:
-                    f.write(f"{domain} -> {ip_address}\n")
+                    f.write(f"{ip_address}\n")
                 return ip_address
             else:
                 print(f"[{Fore.RED}bad -> {domain}{Style.RESET_ALL}]")
