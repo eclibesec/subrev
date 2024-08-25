@@ -1,27 +1,63 @@
-# SubRev Subdomains Finder & ReverseIP Unlimited Result
+# Subrev Tools
 
-## Overview
-![Tool Image](https://i.ibb.co.com/kJ5Zy7K/photo-2024-08-17-23-36-01.jpg)
-
-The **Cyber Penetration Testing and Investigation Tool** is designed to assist security professionals in performing **Reverse IP** and **Subdomain Finder** lookups, aiding in reconnaissance and vulnerability assessment phases of penetration testing. This tool can also be used for investigation purposes, allowing users to search for associated domains and subdomains using an API and save the results to a file for further analysis.
+**Subrev Tools** is a multifunctional tool designed to handle various tasks related to domains, IPs, and subdomains. This tool can perform Reverse IP lookups, find subdomains, retrieve domain data based on date, convert domains to IPs, and remove duplicates from the output file. The API key only needs to be entered once and will be saved automatically for future use.
 
 ## Features
 
-- **Reverse IP Lookup**: Identify domains associated with a specific IP address.
-- **Priv8 Api**: using private api reverse ip data center & subdomain finder
-- **Subdomain Enumeration**: Discover subdomains related to a given domain.
-- **Multithreading**: Utilize multiple threads to accelerate the testing and data retrieval process.
-- **Save Results**: Automatically saves the results of the tests into an output file for analysis.
+- **Reverse IP**: Processes a list of IP addresses to find all related domains.
+- **Subdomain Finder**: Finds subdomains from a given list of domains.
+- **Grab by Date**: Retrieves a list of domains found on a specific date.
+- **Domain to IP**: Converts a list of domains to their corresponding IP addresses.
+- **Remove Duplicates**: Removes duplicate entries from the output file.
+- **API Key Persistence**: The API key only needs to be entered once. It will be saved in a `config.json` file and automatically loaded in the future.
+- **Auto-Install Modules**: Automatically installs any missing Python modules (e.g., `requests`, `colorama`). If the required modules are already installed, the tool skips installation.
 
-## API Key Registration
+## Requirements
 
-To use this tool, you need to register for an API key. Please register at the following link to obtain your key:
+- **Python**: Make sure you have Python 3.x installed on your system.
 
-[Register your API key](http://eclipsesec.tech/user/register.php)
+The required modules will be auto-installed if they are missing. These modules include:
 
+- `requests`
+- `colorama`
 
-### Additions:
-- Added a new section **API Key Registration** that directs users to register for an API key.
-- Provided a link to register at `https://eclipsesec.tech/user/register.php`.
+## Installation
 
-This version includes everything required for penetration testing and investigation, along with the API key registration instructions. Let me know if this works!
+1. Clone this repository to your local directory:
+
+   ```
+   git clone [https://github.com/username/subrev-tools.git](https://github.com/eclibesec/subrev/)
+2. Navigate to the project directory:
+   ```
+   cd subrev-tools
+3. Install the required libraries:
+   ```
+   pip install -r requirements.txt
+## Usage
+1. Running the Tool: Run the tool using the following command:
+   ```
+   python subrev.py
+2. main menu
+- **Once you run the tool, you will see a menu with several options:**
+  - **Reverse IP**
+  - **Subdomain Finder**
+  - **Grab by Date**
+  - **Domain to IP**
+  - **Remove Duplicates**
+3. APIKEY:
+   - **On first use, the tool will prompt you to enter the API key. This key will be saved in the subrev/config.json file.**
+   - **On subsequent runs, the API key will be automatically loaded.**
+
+## Example Usage
+- **Reverse IP: You can provide a list of IP addresses to be processed, and the tool will find all domains associated with the given IPs.**
+- **Subdomain Finder: Provide a list of domains, and the tool will find all subdomains associated with the given domains.**
+- **Grab by Date: Enter a specific date, and the tool will retrieve domains found by the API on that date.**
+- **Domain to IP: Provide a list of domains to convert them into their corresponding IP addresses.**
+- **Remove Duplicates: Use this feature to clean up your output file by removing duplicate entries.**
+
+## Folder Structure
+  ```
+├── subrev/
+│   └── config.json     # Configuration file for storing the API key
+├── requirements.txt    # Python dependencies file
+└── subrev.py           # Main tool file
