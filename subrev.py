@@ -1,7 +1,5 @@
-import json
 import os
 import sys
-import time
 import requests
 import subprocess
 import shutil
@@ -9,19 +7,19 @@ import zipfile
 import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from time import sleep
 from colorama import init, Fore, Style
 import getpass
 import webbrowser
+import json
+# Initialize colorama
 init()
 REQUIRED_MODULES = ['requests', 'colorama']
 file_lock = threading.Lock()
-GITHUB_REPO_API = 'https://api.github.com/repos/{owner}/{repo}/releases/latest'
 REPO_OWNER = 'eclibesec'
 REPO_NAME = 'subrev'
 LOCAL_VERSION_FILE = 'version.txt'
-UPDATE_FOLDER = 'update'
-FILTERED_PREFIXES = ['*.', 'www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
-# Determine if running as .exe or .py
+UPDATE_FOLDER = os.path.join(os.getenv('TEMP'), 'subrev_update')
 is_exe = getattr(sys, 'frozen', False)
 CURRENT_FILE = 'subrev.exe' if is_exe else 'subrev.py'
 GITHUB_EXE_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/blob/main/subrev.exe?raw=true'
@@ -33,8 +31,10 @@ def install_missing_modules():
         except ImportError:
             print(f"Module '{module}' not found. Installing...")
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
+
 install_missing_modules()
 def clean_domain(domain):
+    FILTERED_PREFIXES = ['*.', 'www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
     cleaned_domain = domain
     for prefix in FILTERED_PREFIXES:
         if cleaned_domain.startswith(prefix):
@@ -67,7 +67,7 @@ def save_api_key(apikey):
     config_data = {"apikey": apikey}
     with open('subrev/config.json', 'w', encoding='utf-8') as config_file:
         json.dump(config_data, config_file)
-    print(f"{Fore.GREEN}login success{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}login succes{Style.RESET_ALL}")
 def load_api_key():
     if os.path.exists('subrev/config.json'):
         with open('subrev/config.json', 'r', encoding='utf-8') as config_file:
@@ -100,7 +100,7 @@ def reverse_ip(ip, apikey, output_file):
             if response.status_code == 500:
                 print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
                 retries += 1
-                time.sleep(5)
+                sleep(5)
             else:
                 print(f"{Fore.RED}Reverse IP scanning failed: {http_err}{Style.RESET_ALL}")
                 break
@@ -132,14 +132,13 @@ def subdomain_finder(domain, apikey, output_file):
             if response.status_code == 500:
                 print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
                 retries += 1
-                time.sleep(5)
+                sleep(5)
             else:
                 print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
             break
-
     if retries == max_retries:
         print(f"{Fore.RED}[bad domain - {domain}]{Style.RESET_ALL}")
         with file_lock, open(output_file, "a") as f:
@@ -163,14 +162,13 @@ def grab_by_date(page, apikey, date, output_file):
             if response.status_code == 500:
                 print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
                 retries += 1
-                time.sleep(5)
+                sleep(5)
             else:
                 print(f"{Fore.RED}Grab by date failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
             break
-
     if retries == max_retries:
         print(f"{Fore.RED}[bad page - {page}]{Style.RESET_ALL}")
 def domain_to_ip(domain_name):
@@ -187,7 +185,6 @@ def domain_to_ip_tool():
         print(Fore.GREEN + "Domain to IP tool started..." + Style.RESET_ALL)
         file_name = input("$ give me your file: ").strip()
         output_file_name = input("$ output filename? : ").strip()
-
         while True:
             thread_count_str = input("threads > 1-100: ").strip()
             if thread_count_str.isdigit():
@@ -198,7 +195,6 @@ def domain_to_ip_tool():
                     print(f"{Fore.RED}Thread count must be between 1 and 100.{Style.RESET_ALL}")
             else:
                 print(f"{Fore.RED}Thread count must be a number.{Style.RESET_ALL}")
-
         with open(file_name, 'r', encoding='utf-8') as file:
             domains = file.readlines()
         domains = [domain.strip() for domain in domains]
@@ -220,12 +216,12 @@ def domain_to_ip_tool():
     except Exception as e:
         print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
 def get_latest_version():
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/main"
     try:
         response = requests.get(url)
         response.raise_for_status()
-        latest_release = response.json()
-        latest_version = latest_release['tag_name']
+        latest_commit = response.json()
+        latest_version = latest_commit['sha'][:7]
         return latest_version
     except Exception as e:
         print(f"{Fore.RED}Error checking for updates: {e}{Style.RESET_ALL}")
@@ -248,35 +244,41 @@ def download_update(download_url, output_path):
     except Exception as e:
         print(f"{Fore.RED}Error downloading the update: {e}{Style.RESET_ALL}")
         return None
-def apply_update(new_file):
+def apply_update(new_file, current_file):
     try:
-        current_file_path = os.path.abspath(sys.argv[0])
-        shutil.copy(new_file, current_file_path)
-        print(f"{Fore.GREEN}Update applied successfully!{Style.RESET_ALL}")
-        os.remove(new_file)
+        batch_script = f"""
+        @echo off
+        echo Waiting for the main program to close...
+        ping 127.0.0.1 -n 5 > nul
+        move /Y "{new_file}" "{current_file}"
+        start "" "{current_file}"
+        exit
+        """
+        batch_file = os.path.join(UPDATE_FOLDER, 'update.bat')
+        with open(batch_file, 'w') as f:
+            f.write(batch_script)
+        subprocess.Popen(batch_file, shell=True)
+        print(f"Update script created. The program will now update and restart.")
+        sys.exit(0)
     except Exception as e:
         print(f"{Fore.RED}Error applying the update: {e}{Style.RESET_ALL}")
 def check_for_updates():
-    print(f"{Fore.CYAN}Checking for updates...{Style.RESET_ALL}")
+    print("Checking for updates...")
     latest_version = get_latest_version()
     if not latest_version:
         return
     local_version = get_local_version()
     if local_version is None or latest_version != local_version:
-        print(f"{Fore.YELLOW}New version available: {latest_version}. Downloading update...{Style.RESET_ALL}")
+        print(f"New version available: {latest_version}. Downloading update...")
         download_url = GITHUB_EXE_URL if is_exe else GITHUB_PY_URL
         output_path = os.path.join(UPDATE_FOLDER, CURRENT_FILE)
-
         update_file_path = download_update(download_url, output_path)
         if update_file_path:
-            apply_update(update_file_path)
-            with open(LOCAL_VERSION_FILE, 'w') as file:
-                file.write(latest_version)
-            print(f"{Fore.GREEN}Updated to version {latest_version}.{Style.RESET_ALL}")
+            apply_update(update_file_path, os.path.abspath(sys.argv[0]))
         else:
-            print(f"{Fore.RED}Failed to download the update.{Style.RESET_ALL}")
+            print("Failed to download the update.")
     else:
-        print(f"{Fore.GREEN}You are already using the latest version: {local_version}.{Style.RESET_ALL}")
+        print(f"You are already using the latest version: {local_version}.")
 def main():
     while True:
         try:
@@ -285,7 +287,6 @@ def main():
             apikey = load_api_key()
             if not apikey:
                 apikey = getpass.getpass("Enter API key: ")
-            
             user, valid = validate_api_key(apikey)
             if not valid:
                 print("Invalid API key. Redirecting to registration page...")
@@ -293,7 +294,7 @@ def main():
                 continue
             print(Fore.GREEN + f"[ Welcome {user} ]" + Style.RESET_ALL)
             print("1. Reverse IP ( only ip )")
-            print("2. Subdomain Finder (auto filter .cpanel etc..")
+            print("2. Subdomain Finder (auto filter .cpanel etc..)")
             print("3. Grab by Date")
             print("4. Domain to IP")
             print("5. Remove Duplicates list")
@@ -319,7 +320,6 @@ def main():
                 end_page = int(input("$ to page: "))
                 output_file = input("$ save to: ")
                 thread_count = int(input("$ enter thread count: "))
-
                 with ThreadPoolExecutor(max_workers=thread_count) as executor:
                     for page in range(start_page, end_page + 1):
                         executor.submit(grab_by_date, page, apikey, date, output_file)
