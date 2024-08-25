@@ -136,6 +136,13 @@ def subdomain_finder(domain, apikey, output_file):
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
+            
+            # Check if subdomains list is empty
+            if not body.get('subdomains'):
+                print(f"{Fore.YELLOW}[{domain}] no subdomain found{Style.RESET_ALL}")
+                break  # Stop further retries if no subdomains are found
+            
+            # If subdomains exist, write them to the output file
             if body.get('subdomains'):
                 print(f"[{Fore.GREEN}extracting {domain} -> {len(body['subdomains'])} subdomains found{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
