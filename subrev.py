@@ -123,8 +123,8 @@ def reverse_ip(ip, apikey, output_file):
 
     if retries == max_retries:
         print(f"{Fore.RED}[bad - {ip}]{Style.RESET_ALL}")
-        with file_lock, open(output_file, "a") as f:
-            f.write(f"[bad - {ip}]\n")
+        # Do not write "bad - {ip}" to the file
+
 
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
@@ -157,8 +157,6 @@ def subdomain_finder(domain, apikey, output_file):
 
     if retries == max_retries:
         print(f"{Fore.RED}[bad domain - {domain}]{Style.RESET_ALL}")
-        with file_lock, open(output_file, "a") as f:
-            f.write(f"[bad domain - {domain}]\n")
 
 def grab_by_date(page, apikey, date, output_file):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
