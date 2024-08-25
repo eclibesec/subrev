@@ -12,18 +12,23 @@ from colorama import init, Fore, Style
 import getpass
 import webbrowser
 import json
-# Initialize colorama
+
 init()
+
 REQUIRED_MODULES = ['requests', 'colorama']
 file_lock = threading.Lock()
+
 REPO_OWNER = 'eclibesec'
 REPO_NAME = 'subrev'
 LOCAL_VERSION_FILE = 'version.txt'
 UPDATE_FOLDER = os.path.join(os.getenv('TEMP'), 'subrev_update')
+
 is_exe = getattr(sys, 'frozen', False)
 CURRENT_FILE = 'subrev.exe' if is_exe else 'subrev.py'
 GITHUB_EXE_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/blob/main/subrev.exe?raw=true'
 GITHUB_PY_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/blob/main/subrev.py?raw=true'
+
+
 def install_missing_modules():
     for module in REQUIRED_MODULES:
         try:
@@ -33,6 +38,7 @@ def install_missing_modules():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
 
 install_missing_modules()
+
 def clean_domain(domain):
     FILTERED_PREFIXES = ['*.', 'www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
     cleaned_domain = domain
@@ -40,6 +46,7 @@ def clean_domain(domain):
         if cleaned_domain.startswith(prefix):
             cleaned_domain = cleaned_domain[len(prefix):]
     return cleaned_domain
+
 def remove_duplicates(output_file):
     try:
         with open(output_file, "r", encoding="utf-8") as file:
@@ -51,6 +58,7 @@ def remove_duplicates(output_file):
         print(f"{Fore.GREEN}Duplicates removed from '{output_file}'.{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.RED}Error while removing duplicates: {e}{Style.RESET_ALL}")
+
 def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
     try:
@@ -63,17 +71,20 @@ def validate_api_key(apikey):
     except Exception as e:
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
     return "", False
+
 def save_api_key(apikey):
     config_data = {"apikey": apikey}
     with open('subrev/config.json', 'w', encoding='utf-8') as config_file:
         json.dump(config_data, config_file)
-    print(f"{Fore.GREEN}login succes{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}Success login{Style.RESET_ALL}")
+
 def load_api_key():
     if os.path.exists('subrev/config.json'):
         with open('subrev/config.json', 'r', encoding='utf-8') as config_file:
             config_data = json.load(config_file)
             return config_data.get('apikey', None)
     return None
+
 def open_registration_page():
     registration_url = "https://eclipsesec.tech/register"
     try:
@@ -81,10 +92,12 @@ def open_registration_page():
         print(f"{Fore.GREEN}Opening registration page: {registration_url}{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.RED}Failed to open registration page: {e}{Style.RESET_ALL}")
+
 def reverse_ip(ip, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     retries = 0
     max_retries = 10
+
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -112,10 +125,12 @@ def reverse_ip(ip, apikey, output_file):
         print(f"{Fore.RED}[bad - {ip}]{Style.RESET_ALL}")
         with file_lock, open(output_file, "a") as f:
             f.write(f"[bad - {ip}]\n")
+
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     retries = 0
     max_retries = 10
+
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -139,14 +154,17 @@ def subdomain_finder(domain, apikey, output_file):
         except Exception as e:
             print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
             break
+
     if retries == max_retries:
         print(f"{Fore.RED}[bad domain - {domain}]{Style.RESET_ALL}")
         with file_lock, open(output_file, "a") as f:
             f.write(f"[bad domain - {domain}]\n")
+
 def grab_by_date(page, apikey, date, output_file):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     retries = 0
     max_retries = 10
+
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -169,8 +187,10 @@ def grab_by_date(page, apikey, date, output_file):
         except Exception as e:
             print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
             break
+
     if retries == max_retries:
         print(f"{Fore.RED}[bad page - {page}]{Style.RESET_ALL}")
+
 def domain_to_ip(domain_name):
     if len(domain_name) > 253 or len(domain_name) == 0:
         return None
@@ -180,11 +200,13 @@ def domain_to_ip(domain_name):
         return ip_address
     except (socket.gaierror, UnicodeError):
         return None
+
 def domain_to_ip_tool():
     try:
         print(Fore.GREEN + "Domain to IP tool started..." + Style.RESET_ALL)
         file_name = input("$ give me your file: ").strip()
         output_file_name = input("$ output filename? : ").strip()
+
         while True:
             thread_count_str = input("threads > 1-100: ").strip()
             if thread_count_str.isdigit():
@@ -195,9 +217,11 @@ def domain_to_ip_tool():
                     print(f"{Fore.RED}Thread count must be between 1 and 100.{Style.RESET_ALL}")
             else:
                 print(f"{Fore.RED}Thread count must be a number.{Style.RESET_ALL}")
+
         with open(file_name, 'r', encoding='utf-8') as file:
             domains = file.readlines()
         domains = [domain.strip() for domain in domains]
+
         def process_domain(domain):
             ip_address = domain_to_ip(domain)
             if ip_address:
@@ -208,13 +232,17 @@ def domain_to_ip_tool():
             else:
                 print(f"[{Fore.RED}bad -> {domain}{Style.RESET_ALL}]")
                 return None
+
         with ThreadPoolExecutor(max_workers=thread_count) as executor:
             executor.map(process_domain, domains)
+
         print(f"Data has been saved to '{output_file_name}'")
+    
     except FileNotFoundError:
         print(f"{Fore.RED}File '{file_name}' not found.{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
+
 def get_latest_version():
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/main"
     try:
@@ -226,11 +254,13 @@ def get_latest_version():
     except Exception as e:
         print(f"{Fore.RED}Error checking for updates: {e}{Style.RESET_ALL}")
         return None
+
 def get_local_version():
     if os.path.exists(LOCAL_VERSION_FILE):
         with open(LOCAL_VERSION_FILE, 'r') as file:
             return file.read().strip()
     return None
+
 def download_update(download_url, output_path):
     try:
         response = requests.get(download_url, stream=True)
@@ -244,6 +274,7 @@ def download_update(download_url, output_path):
     except Exception as e:
         print(f"{Fore.RED}Error downloading the update: {e}{Style.RESET_ALL}")
         return None
+
 def apply_update(new_file, current_file):
     try:
         batch_script = f"""
@@ -255,23 +286,32 @@ def apply_update(new_file, current_file):
         exit
         """
         batch_file = os.path.join(UPDATE_FOLDER, 'update.bat')
+
         with open(batch_file, 'w') as f:
             f.write(batch_script)
+
         subprocess.Popen(batch_file, shell=True)
         print(f"Update script created. The program will now update and restart.")
         sys.exit(0)
+
     except Exception as e:
         print(f"{Fore.RED}Error applying the update: {e}{Style.RESET_ALL}")
+
 def check_for_updates():
     print("Checking for updates...")
+    
     latest_version = get_latest_version()
     if not latest_version:
         return
+
     local_version = get_local_version()
+
     if local_version is None or latest_version != local_version:
         print(f"New version available: {latest_version}. Downloading update...")
+
         download_url = GITHUB_EXE_URL if is_exe else GITHUB_PY_URL
         output_path = os.path.join(UPDATE_FOLDER, CURRENT_FILE)
+
         update_file_path = download_update(download_url, output_path)
         if update_file_path:
             apply_update(update_file_path, os.path.abspath(sys.argv[0]))
@@ -279,6 +319,7 @@ def check_for_updates():
             print("Failed to download the update.")
     else:
         print(f"You are already using the latest version: {local_version}.")
+
 def main():
     while True:
         try:
@@ -287,6 +328,7 @@ def main():
             apikey = load_api_key()
             if not apikey:
                 apikey = getpass.getpass("Enter API key: ")
+            
             user, valid = validate_api_key(apikey)
             if not valid:
                 print("Invalid API key. Redirecting to registration page...")
@@ -294,11 +336,12 @@ def main():
                 continue
             print(Fore.GREEN + f"[ Welcome {user} ]" + Style.RESET_ALL)
             print("1. Reverse IP ( only ip )")
-            print("2. Subdomain Finder (auto filter .cpanel etc..)")
+            print("2. Subdomain Finder (auto filter .cpanel etc..")
             print("3. Grab by Date")
             print("4. Domain to IP")
             print("5. Remove Duplicates list")
             print("6. Check for Updates")
+
             choice = int(input("$ choose: "))
             if choice == 1 or choice == 2:
                 input_list = input("$ give me your file list: ")
@@ -320,6 +363,7 @@ def main():
                 end_page = int(input("$ to page: "))
                 output_file = input("$ save to: ")
                 thread_count = int(input("$ enter thread count: "))
+
                 with ThreadPoolExecutor(max_workers=thread_count) as executor:
                     for page in range(start_page, end_page + 1):
                         executor.submit(grab_by_date, page, apikey, date, output_file)
@@ -337,11 +381,13 @@ def main():
         except KeyboardInterrupt:
             print(f"\n{Fore.RED}Process interrupted by user (Ctrl+C). Exiting...{Style.RESET_ALL}")
             sys.exit(0)
+
 def clear_screen():
     if os.name == 'nt':
         os.system('cls')
     else:
         os.system('clear')
+
 def display_header():
     print(Fore.CYAN + '░██████╗██╗░░░██╗██████╗░██████╗░███████╗██╗░░░██╗')
     print(Fore.CYAN + '██╔════╝██║░░░██║██╔══██╗██╔══██╗██╔════╝██║░░░██║')
@@ -352,5 +398,6 @@ def display_header():
     print(Fore.WHITE + " - developed by Eclipse Security Labs")
     print(Fore.WHITE + " - website : https://eclipsesec.tech/")
     print(Style.RESET_ALL)
+
 if __name__ == "__main__":
     main()
