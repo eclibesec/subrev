@@ -20,7 +20,10 @@ file_lock = threading.Lock()
 REPO_OWNER = 'eclibesec'
 REPO_NAME = 'subrev'
 LOCAL_VERSION_FILE = 'version.txt'
-UPDATE_FOLDER = os.path.join(os.getenv('TEMP'), 'subrev_update')
+if os.name == 'nt':
+    UPDATE_FOLDER = os.path.join(os.getenv('TEMP'), 'subrev_update')
+else:
+    UPDATE_FOLDER = os.path.join('/tmp', 'subrev_update')
 is_exe = getattr(sys, 'frozen', False)
 CURRENT_FILE = 'subrev.exe' if is_exe else 'subrev.py'
 GITHUB_EXE_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/blob/main/subrev.exe?raw=true'
