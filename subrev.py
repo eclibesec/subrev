@@ -98,7 +98,7 @@ def validate_api_key(apikey):
 def reverse_ip(ip, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     retries = 0
-    max_retries = 10
+    max_retries = 2
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -112,7 +112,6 @@ def reverse_ip(ip, apikey, output_file):
                 break
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500:
-                print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
                 retries += 1
                 sleep(5)
             else:
@@ -126,7 +125,7 @@ def reverse_ip(ip, apikey, output_file):
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     retries = 0
-    max_retries = 10
+    max_retries = 2
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -145,7 +144,7 @@ def subdomain_finder(domain, apikey, output_file):
                 break
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500:
-                print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
+                
                 retries += 1
                 sleep(5)
             else:
@@ -159,7 +158,7 @@ def subdomain_finder(domain, apikey, output_file):
 def grab_by_date(page, apikey, date, output_file):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     retries = 0
-    max_retries = 10
+    max_retries = 2
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -173,7 +172,7 @@ def grab_by_date(page, apikey, date, output_file):
                 break
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500:
-                print(f"{Fore.YELLOW}500 Internal Server Error. Retrying... {retries + 1}/{max_retries}{Style.RESET_ALL}")
+                
                 retries += 1
                 sleep(5)
             else:
