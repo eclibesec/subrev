@@ -37,7 +37,7 @@ def install_missing_modules():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
 install_missing_modules()
 def clean_domain(domain):
-    FILTERED_PREFIXES = ['*.', 'www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
+    FILTERED_PREFIXES = ['www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
     cleaned_domain = domain
     for prefix in FILTERED_PREFIXES:
         if cleaned_domain.startswith(prefix):
@@ -95,11 +95,9 @@ def validate_api_key(apikey):
             debug_file.write(f"Error during API key validation: {str(e)}\n")
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
     return "", False
-def reverse_ip(ip, apikey, output_file):
+def reverse_ip(ip, apikey, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
-    retries = 0
-    max_retries = 2
-    while retries < max_retries:
+    while True:
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -111,55 +109,53 @@ def reverse_ip(ip, apikey, output_file):
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 500:
-                retries += 1
-                sleep(5)
+            if response.status_code == 502:
+                print(f"{Fore.YELLOW}[ Retrying ] -> {ip}{Style.RESET_ALL}")
+                sleep(1)
+            elif response.status_code == 500:
+                print(f"{Fore.RED}[Bad Ip] -> {ip}{Style.RESET_ALL}")
+                break
             else:
                 print(f"{Fore.RED}Reverse IP scanning failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Reverse IP scanning: {e}{Style.RESET_ALL}")
             break
-    if retries == max_retries:
-        print(f"{Fore.RED}[bad - {ip}]{Style.RESET_ALL}")
-def subdomain_finder(domain, apikey, output_file):
+
+def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
-    retries = 0
-    max_retries = 2
-    while retries < max_retries:
+    while True:
         try:
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
-            
             if not body.get('subdomains'):
-                print(f"{Fore.YELLOW}[{domain}] no subdomain found{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}[Bad] -> {domain}{Style.RESET_ALL}")
                 break  
             if body.get('subdomains'):
-                print(f"[{Fore.GREEN}extracting {domain} -> {len(body['subdomains'])} subdomains found{Style.RESET_ALL}]")
+                print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
                     for subdomain in body['subdomains']:
                         cleaned_subdomain = clean_domain(subdomain)
                         f.write(cleaned_subdomain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 500:
-                
-                retries += 1
-                sleep(5)
+            if response.status_code == 502:
+                print(f"{Fore.YELLOW}[ retrying ] -> {domain}{Style.RESET_ALL}")
+                sleep(1)
+            elif response.status_code == 500:
+                print(f"{Fore.RED}[ No subdomains found ] -> {domain} {Style.RESET_ALL}")
+                break
             else:
                 print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
             break
-    if retries == max_retries:
-        print(f"{Fore.RED}[bad domain - {domain}]{Style.RESET_ALL}")
-def grab_by_date(page, apikey, date, output_file):
+
+def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
-    retries = 0
-    max_retries = 2
-    while retries < max_retries:
+    while True:  # Keep retrying indefinitely
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -171,10 +167,12 @@ def grab_by_date(page, apikey, date, output_file):
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 500:
-                
-                retries += 1
-                sleep(5)
+            if response.status_code == 502:
+                print(f"{Fore.YELLOW}Retrying...{page}.{Style.RESET_ALL}")
+                sleep(1)
+            elif response.status_code == 500:
+                print(f"{Fore.RED}{page} NO DOMAINS{Style.RESET_ALL}")
+                break
             else:
                 print(f"{Fore.RED}Grab by date failed: {http_err}{Style.RESET_ALL}")
                 break
@@ -182,8 +180,6 @@ def grab_by_date(page, apikey, date, output_file):
             print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
             break
 
-    if retries == max_retries:
-        print(f"{Fore.RED}[bad page - {page}]{Style.RESET_ALL}")
 def domain_to_ip(domain_name):
     if len(domain_name) > 253 or len(domain_name) == 0:
         return None
