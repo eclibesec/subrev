@@ -37,7 +37,40 @@ def install_missing_modules():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
 install_missing_modules()
 def clean_domain(domain):
-    FILTERED_PREFIXES = ['www.', 'webmail.', 'cpanel.', 'cpcalendars.', 'cpcontacts.', 'webdisk.', 'mail.', 'whm.', 'autodiscover.']
+    FILTERED_PREFIXES = ['www.', 
+                         'webmail.', 
+                         'cpanel.', 
+                         'cpcalendars.', 
+                         'cpcontacts.', 
+                         'webdisk.', 
+                         'mail.',
+                         'whm.', 
+                         'autodiscover.',
+                         'slot.',
+                         'slot-gacor.',
+                         'server-thailand.',
+                         'slot-zeus,',
+                         'situs-slot-gacor.',
+                         'situs-slot.',
+                         'situsmpo.',
+                         'situsslot.',
+                         'situsslot777.',
+                         'siot8tussl8.'
+                         'situsslot88wajib.',
+                         'situsslotresmi.',
+                         'situsslotthailand.',
+                         'situstoto.',
+                         'situsslotgacorlinkslotterpercaya.',
+                         'situs-toto.',
+                         'situs-slot88.', 
+                         'situs-casino-online.',
+                         'situs4d.',
+                         'slot-5000.',
+                         'slot-10k.',
+                         'slot-88.',
+                         'slot-asia.',
+                         'slot-bonus.',
+                         'slot-bri.']
     cleaned_domain = domain
     for prefix in FILTERED_PREFIXES:
         if cleaned_domain.startswith(prefix):
@@ -121,7 +154,6 @@ def reverse_ip(ip, apikey, output_file, bad_domains_file='bad_domains.txt'):
         except Exception as e:
             print(f"{Fore.RED}Error during Reverse IP scanning: {e}{Style.RESET_ALL}")
             break
-
 def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     while True:
@@ -152,10 +184,9 @@ def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.
         except Exception as e:
             print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
             break
-
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
-    while True:  # Keep retrying indefinitely
+    while True:
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -298,7 +329,6 @@ def main():
             apikey = load_api_key()
             if not apikey:
                 apikey = getpass.getpass("Enter API key: ")
-            
             user, valid = validate_api_key(apikey)
             if not valid:
                 print("Invalid API key. Redirecting to registration page...")
@@ -326,6 +356,7 @@ def main():
                     with ThreadPoolExecutor(max_workers=thread_count) as executor:
                         for domain in items:
                             executor.submit(subdomain_finder, domain, apikey, output_file)
+                    remove_duplicates(output_file)
             elif choice == 3:
                 date = input("$ Enter date (YYYY-MM-DD): ")
                 start_page = int(input("$ Page [ start from ]: "))
