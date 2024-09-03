@@ -26,7 +26,7 @@ The required modules will be auto-installed if they are missing. These modules i
 1. Clone this repository to your local directory:
 
    ```
-   git clone [https://github.com/username/subrev-tools.git](https://github.com/eclibesec/subrev)
+   git clone https://github.com/eclibesec/subrev
 2. Navigate to the project directory:
    ```
    cd subrev-tools
