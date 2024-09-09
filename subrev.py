@@ -142,18 +142,16 @@ def reverse_ip(ip, apikey, output_file, bad_domains_file='bad_domains.txt'):
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 502:
-                print(f"{Fore.YELLOW}[ Retrying ] -> {ip}{Style.RESET_ALL}")
-                sleep(1)
-            elif response.status_code == 500:
-                print(f"{Fore.RED}[Bad Ip] -> {ip}{Style.RESET_ALL}")
-                break
+            if response.status_code in [502, 500, 520]:
+                print(f"{Fore.YELLOW}[ Retrying ] -> {ip} (Waiting for the server to respond){Style.RESET_ALL}")
+                sleep(2)  # Wait before retrying
             else:
                 print(f"{Fore.RED}Reverse IP scanning failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Reverse IP scanning: {e}{Style.RESET_ALL}")
             break
+
 def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     while True:
@@ -172,18 +170,16 @@ def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.
                         f.write(cleaned_subdomain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 502:
-                print(f"{Fore.YELLOW}[ retrying ] -> {domain}{Style.RESET_ALL}")
-                sleep(1)
-            elif response.status_code == 500:
-                print(f"{Fore.RED}[ No subdomains found ] -> {domain} {Style.RESET_ALL}")
-                break
+            if response.status_code in [502, 500, 520]:
+                print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
+                sleep(2)  # Wait before retrying
             else:
                 print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
             break
+
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     while True:
@@ -198,18 +194,16 @@ def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 502:
-                print(f"{Fore.YELLOW}Retrying...{page}.{Style.RESET_ALL}")
-                sleep(1)
-            elif response.status_code == 500:
-                print(f"{Fore.RED}{page} NO DOMAINS{Style.RESET_ALL}")
-                break
+            if response.status_code in [502, 500, 520]:
+                print(f"{Fore.YELLOW}Retrying...{page}. (Waiting for the server to respond){Style.RESET_ALL}")
+                sleep(2)  # Wait before retrying
             else:
-                print(f"{Fore.RED}Grab by date failed: {http_err}{Style.RESET_ALL}")
+                print(f"{Fore.RED}{page} NO DOMAINS{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
             break
+
 
 def domain_to_ip(domain_name):
     if len(domain_name) > 253 or len(domain_name) == 0:
@@ -341,7 +335,15 @@ def main():
             print("4. Domain to IP")
             print("5. Remove Duplicates list")
             print("6. Check for Updates")
-            choice = int(input("$ choose: "))
+            
+            while True:
+                choice_input = input("$ choose: ").strip()
+                if choice_input.isdigit():
+                    choice = int(choice_input)
+                    break
+                else:
+                    print(f"{Fore.RED}Invalid input. Please enter a number between 1 and 6.{Style.RESET_ALL}")
+
             if choice == 1 or choice == 2:
                 input_list = input("$ give me your file list: ")
                 output_file = input("$ save to: ")
@@ -375,6 +377,7 @@ def main():
                 check_for_updates()
             else:
                 print(f"{Fore.RED}Invalid choice. Please select a valid option.{Style.RESET_ALL}")
+            
             input(f"\n{Fore.GREEN}Task completed. Press Enter to return to the main menu.{Style.RESET_ALL}")
         except KeyboardInterrupt:
             print(f"\n{Fore.RED}Process interrupted by user (Ctrl+C). Exiting...{Style.RESET_ALL}")
