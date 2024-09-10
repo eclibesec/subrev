@@ -128,13 +128,16 @@ def validate_api_key(apikey):
             debug_file.write(f"Error during API key validation: {str(e)}\n")
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
     return "", False
-def reverse_ip(ip, apikey, output_file, bad_domains_file='bad_domains.txt'):
+def reverse_ip(ip, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     while True:
         try:
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
+            if body.get("error") == "Invalid request type.":
+                print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
+                break
             if body.get('domains'):
                 print(f"[{Fore.GREEN}reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
@@ -142,44 +145,50 @@ def reverse_ip(ip, apikey, output_file, bad_domains_file='bad_domains.txt'):
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code in [502, 500, 520]:
+            if response.status_code == 500 and "Invalid request type." in response.text:
+                print(f"{Fore.RED}Error: Invalid request type for {ip}. Skipping...{Style.RESET_ALL}")
+                break
+            if response.status_code in [502,520]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {ip} (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)  # Wait before retrying
+                sleep(2) 
             else:
-                print(f"{Fore.RED}Reverse IP scanning failed: {http_err}{Style.RESET_ALL}")
+                print(f"{Fore.RED}[ bad ip ] - [{ip}]: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
             print(f"{Fore.RED}Error during Reverse IP scanning: {e}{Style.RESET_ALL}")
             break
-
-def subdomain_finder(domain, apikey, output_file, bad_domains_file='bad_domains.txt'):
+def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     while True:
         try:
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
-            if not body.get('subdomains'):
-                print(f"{Fore.YELLOW}[Bad] -> {domain}{Style.RESET_ALL}")
-                break  
+
+            # Jika terdapat error "Invalid request type." untuk status 200 atau 500, hentikan retrying
+            if body.get("error") == "Invalid request type.":
+                print(f"{Fore.RED}Error: Invalid request type for {domain}. Skipping...{Style.RESET_ALL}")
+                break
+
             if body.get('subdomains'):
                 print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
                     for subdomain in body['subdomains']:
-                        cleaned_subdomain = clean_domain(subdomain)
-                        f.write(cleaned_subdomain + "\n")
+                        f.write(subdomain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code in [502, 500, 520]:
+            if response.status_code == 500 and "Invalid request type." in response.text:
+                print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
+                break
+            if response.status_code in [502,520]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
                 sleep(2)  # Wait before retrying
             else:
                 print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
                 break
         except Exception as e:
-            print(f"{Fore.RED}Error during Subdomain Finder: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
             break
-
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     while True:
@@ -194,9 +203,9 @@ def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code in [502, 500, 520]:
+            if response.status_code in [502,520]:
                 print(f"{Fore.YELLOW}Retrying...{page}. (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)  # Wait before retrying
+                sleep(2)
             else:
                 print(f"{Fore.RED}{page} NO DOMAINS{Style.RESET_ALL}")
                 break
