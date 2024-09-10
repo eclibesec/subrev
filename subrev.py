@@ -106,7 +106,6 @@ def load_api_key():
             config_data = json.load(config_file)
             return config_data.get('apikey', None)
     return None
-
 def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
     try:
@@ -115,7 +114,6 @@ def validate_api_key(apikey):
         body = response.json()
         with open("debug.txt", "a", encoding="utf-8") as debug_file:
             debug_file.write(f"API Response: {body}\n")
-        
         if body.get('status') == "valid":
             save_api_key(apikey)
             return body.get('user'), True
@@ -164,12 +162,9 @@ def subdomain_finder(domain, apikey, output_file):
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
-
-            # Jika terdapat error "Invalid request type." untuk status 200 atau 500, hentikan retrying
             if body.get("error") == "Invalid request type.":
                 print(f"{Fore.RED}Error: Invalid request type for {domain}. Skipping...{Style.RESET_ALL}")
                 break
-
             if body.get('subdomains'):
                 print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
@@ -182,7 +177,7 @@ def subdomain_finder(domain, apikey, output_file):
                 break
             if response.status_code in [502,520]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)  # Wait before retrying
+                sleep(2)
             else:
                 print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
                 break
@@ -212,8 +207,6 @@ def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.
         except Exception as e:
             print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
             break
-
-
 def domain_to_ip(domain_name):
     if len(domain_name) > 253 or len(domain_name) == 0:
         return None
