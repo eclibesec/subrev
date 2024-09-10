@@ -29,7 +29,7 @@ The required modules will be auto-installed if they are missing. These modules i
    git clone https://github.com/eclibesec/subrev
 2. Navigate to the project directory:
    ```
-   cd subrev-tools
+   cd subrev
 3. Install the required libraries:
    ```
    pip install -r requirements.txt
