@@ -13,8 +13,8 @@ import getpass
 import webbrowser
 import json
 
-init()
 
+init()
 REQUIRED_MODULES = ['requests', 'colorama']
 file_lock = threading.Lock()
 REPO_OWNER = 'eclibesec'
@@ -106,6 +106,7 @@ def load_api_key():
             config_data = json.load(config_file)
             return config_data.get('apikey', None)
     return None
+
 def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
     try:
@@ -114,6 +115,7 @@ def validate_api_key(apikey):
         body = response.json()
         with open("debug.txt", "a", encoding="utf-8") as debug_file:
             debug_file.write(f"API Response: {body}\n")
+        
         if body.get('status') == "valid":
             save_api_key(apikey)
             return body.get('user'), True
@@ -144,16 +146,16 @@ def reverse_ip(ip, apikey, output_file):
                 break
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500 and "Invalid request type." in response.text:
-                print(f"{Fore.RED}Error: Invalid request type for {ip}. Skipping...{Style.RESET_ALL}")
+                print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
                 break
             if response.status_code in [502,520]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {ip} (Waiting for the server to respond){Style.RESET_ALL}")
                 sleep(2) 
             else:
-                print(f"{Fore.RED}[ bad ip ] - [{ip}]: {http_err}{Style.RESET_ALL}")
+                print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
                 break
         except Exception as e:
-            print(f"{Fore.RED}Error during Reverse IP scanning: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
             break
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
@@ -165,6 +167,7 @@ def subdomain_finder(domain, apikey, output_file):
             if body.get("error") == "Invalid request type.":
                 print(f"{Fore.RED}Error: Invalid request type for {domain}. Skipping...{Style.RESET_ALL}")
                 break
+
             if body.get('subdomains'):
                 print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
@@ -198,7 +201,7 @@ def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.
                         f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code in [502,520]:
+            if response.status_code in [502,520,500]:
                 print(f"{Fore.YELLOW}Retrying...{page}. (Waiting for the server to respond){Style.RESET_ALL}")
                 sleep(2)
             else:
