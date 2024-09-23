@@ -106,7 +106,6 @@ def load_api_key():
             config_data = json.load(config_file)
             return config_data.get('apikey', None)
     return None
-
 def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
     try:
@@ -178,7 +177,7 @@ def subdomain_finder(domain, apikey, output_file):
             if response.status_code == 500 and "Invalid request type." in response.text:
                 print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
                 break
-            if response.status_code in [502,520]:
+            if response.status_code in [502,520,500]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
                 sleep(2)
             else:
@@ -314,7 +313,6 @@ def apply_update(new_file, current_file):
         batch_file = os.path.join(UPDATE_FOLDER, 'update.bat')
         with open(batch_file, 'w') as f:
             f.write(batch_script)
-
         subprocess.Popen(batch_file, shell=True)
         print(f"Update script created. The program will now update and restart.")
         sys.exit(0)
@@ -334,13 +332,12 @@ def main():
                 open_registration_page()
                 continue
             print(Fore.GREEN + f"[ Welcome {user} ]" + Style.RESET_ALL)
-            print("1. Reverse IP ( only ip )")
+            print("1. Reverse IP ")
             print("2. Subdomain Finder (auto filter .cpanel etc..")
             print("3. Grab by Date")
             print("4. Domain to IP")
             print("5. Remove Duplicates list")
             print("6. Check for Updates")
-            
             while True:
                 choice_input = input("$ choose: ").strip()
                 if choice_input.isdigit():
@@ -348,23 +345,39 @@ def main():
                     break
                 else:
                     print(f"{Fore.RED}Invalid input. Please enter a number between 1 and 6.{Style.RESET_ALL}")
-
-            if choice == 1 or choice == 2:
+            if choice == 1:
+                print(Fore.GREEN + "[ RverseIP started... ]" + Style.RESET_ALL)
+                input_list = input("$ give me your file list: ").strip()
+                auto_domain_to_ip = input("$ auto domain to ip [ Y/N ]: ").strip().lower()
+                output_file = input("$ save to: ").strip()
+                thread_count = int(input("$ enter thread count: "))
+                with open(input_list, 'r') as f:
+                    items = [item.strip() for item in f.readlines()]
+                def process_and_reverse(domain_or_ip):
+                    if auto_domain_to_ip == 'y':
+                        ip = domain_to_ip(domain_or_ip)
+                        if ip:
+                            print(f"[{Fore.GREEN}{domain_or_ip} -> {ip}{Style.RESET_ALL}] Converting domains to IP addresses...")
+                            reverse_ip(ip, apikey, output_file)
+                        else:
+                            print(f"[{Fore.RED}Failed to convert domain: {domain_or_ip}{Style.RESET_ALL}]")
+                    else:
+                        reverse_ip(domain_or_ip, apikey, output_file)
+                with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                    executor.map(process_and_reverse, items)
+            elif choice == 2:
+                print(Fore.GREEN + "[ Subdomain finder started... ] " + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ")
                 output_file = input("$ save to: ")
                 thread_count = int(input("$ enter thread count: "))
                 with open(input_list, 'r') as f:
                     items = [item.strip() for item in f.readlines()]
-                if choice == 1:
-                    with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                        for ip in items:
-                            executor.submit(reverse_ip, ip, apikey, output_file)
-                elif choice == 2:
-                    with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                        for domain in items:
-                            executor.submit(subdomain_finder, domain, apikey, output_file)
-                    remove_duplicates(output_file)
+                with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                    for domain in items:
+                        executor.submit(subdomain_finder, domain, apikey, output_file)
+                remove_duplicates(output_file)
             elif choice == 3:
+                print(Fore.GREEN + "[ Grab by date started ] ..." + Style.RESET_ALL)
                 date = input("$ Enter date (YYYY-MM-DD): ")
                 start_page = int(input("$ Page [ start from ]: "))
                 end_page = int(input("$ to page: "))
@@ -382,7 +395,6 @@ def main():
                 check_for_updates()
             else:
                 print(f"{Fore.RED}Invalid choice. Please select a valid option.{Style.RESET_ALL}")
-            
             input(f"\n{Fore.GREEN}Task completed. Press Enter to return to the main menu.{Style.RESET_ALL}")
         except KeyboardInterrupt:
             print(f"\n{Fore.RED}Process interrupted by user (Ctrl+C). Exiting...{Style.RESET_ALL}")
@@ -401,6 +413,7 @@ def display_header():
     print(Fore.CYAN + '╚═════╝░╚═════╝░╚═════╝░╚═╝░░╚═╝╚══════╝░░░╚═╝░░░')
     print(Fore.WHITE + " - developed by Eclipse Security Labs")
     print(Fore.WHITE + " - website : https://eclipsesec.tech/")
+    print(Fore.GREEN + " - version : 1.5.0")
     print(Style.RESET_ALL)
 def open_registration_page():
     registration_url = "https://eclipsesec.tech/register"
