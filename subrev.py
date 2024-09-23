@@ -95,8 +95,6 @@ def save_api_key(apikey):
     config_data = {"apikey": apikey}
     with open(config_file_path, 'w', encoding='utf-8') as config_file:
         json.dump(config_data, config_file)
-    
-    print(f"{Fore.GREEN}Success login{Style.RESET_ALL}")
 def load_api_key():
     config_folder = 'subrev'
     config_file_path = os.path.join(config_folder, 'config.json')
@@ -331,13 +329,14 @@ def main():
                 print("Invalid API key. Redirecting to registration page...")
                 open_registration_page()
                 continue
-            print(Fore.GREEN + f"[ Welcome {user} ]" + Style.RESET_ALL)
-            print("1. Reverse IP ")
-            print("2. Subdomain Finder (auto filter .cpanel etc..")
-            print("3. Grab by Date")
-            print("4. Domain to IP")
-            print("5. Remove Duplicates list")
-            print("6. Check for Updates")
+            print(Fore.GREEN + "╭─" + Fore.GREEN + "「" + Fore.CYAN + f" Welcome {user} " + Fore.GREEN + "」" + Style.RESET_ALL)
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 1. Reverse IP")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 2. Subdomain Finder")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 3. Grab by Date")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 4. Domain to IP")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 5. Remove Duplicates list")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 6. Check for Updates")
+            print(Fore.GREEN + "╰─────────────────────────" + Style.RESET_ALL)
             while True:
                 choice_input = input("$ choose: ").strip()
                 if choice_input.isdigit():
