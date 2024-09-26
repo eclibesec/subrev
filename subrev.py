@@ -13,6 +13,8 @@ import getpass
 import webbrowser
 import json
 
+from domi import domain_to_ip
+
 
 init()
 REQUIRED_MODULES = ['requests', 'colorama']
@@ -106,26 +108,31 @@ def load_api_key():
     return None
 def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
+    debug_file_path = "debug.txt"
     try:
         response = requests.get(url)
         response.raise_for_status()
         body = response.json()
-        with open("debug.txt", "a", encoding="utf-8") as debug_file:
-            debug_file.write(f"API Response: {body}\n")
+        try:
+            with open(debug_file_path, "a", encoding="utf-8") as debug_file:
+                debug_file.write(f"API Response: {body}\n")
+        except OSError as e:
+            print(f"{Fore.RED}Failed to write to debug file: {str(e)}{Style.RESET_ALL}")
         
         if body.get('status') == "valid":
             save_api_key(apikey)
             return body.get('user'), True
         else:
-            with open("debug.txt", "a", encoding="utf-8") as debug_file:
-                debug_file.write(f"Invalid API key: {body.get('message', 'Unknown error')}\n")
             print(f"{Fore.RED}Invalid API key: {body.get('message', 'Unknown error')}{Style.RESET_ALL}")
     except Exception as e:
-        with open("debug.txt", "a", encoding="utf-8") as debug_file:
-            debug_file.write(f"Error during API key validation: {str(e)}\n")
+        try:
+            with open(debug_file_path, "a", encoding="utf-8") as debug_file:
+                debug_file.write(f"Error during API key validation: {str(e)}\n")
+        except OSError as file_err:
+            print(f"{Fore.RED}Failed to write error log: {str(file_err)}{Style.RESET_ALL}")
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
     return "", False
-def reverse_ip(ip, apikey, output_file):
+def reverse_ip(ip, apikey, output_file, domain_filter=None):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     while True:
         try:
@@ -137,17 +144,26 @@ def reverse_ip(ip, apikey, output_file):
                 break
             if body.get('domains'):
                 print(f"[{Fore.GREEN}reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
-                with file_lock, open(output_file, "a") as f:
-                    for domain in body['domains']:
-                        f.write(domain + "\n")
+                for domain in body['domains']:
+                    if domain_filter:
+                        if domain.endswith(domain_filter):
+                            print(f"[{Fore.GREEN}Saving domain: {domain}{Style.RESET_ALL}]")
+                            with file_lock:
+                                with open(output_file, "a") as f:
+                                    f.write(domain + "\n")
+                    else:
+                        print(f"[{Fore.GREEN}Saving domain: {domain}{Style.RESET_ALL}]")
+                        with file_lock:
+                            with open(output_file, "a") as f:
+                                f.write(domain + "\n")
                 break
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500 and "Invalid request type." in response.text:
                 print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
                 break
-            if response.status_code in [502,520]:
+            if response.status_code in [502, 520]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {ip} (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2) 
+                sleep(2)
             else:
                 print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
                 break
@@ -186,36 +202,29 @@ def subdomain_finder(domain, apikey, output_file):
             break
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
-    while True:
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            body = response.json()
-            if body.get('domains'):
-                print(f"page [{page}] -> domains found [{len(body['domains'])}]")
-                with file_lock, open(output_file, "a") as f:
-                    for domain in body['domains']:
-                        f.write(domain + "\n")
-                break
-        except requests.exceptions.HTTPError as http_err:
-            if response.status_code in [502,520,500]:
-                print(f"{Fore.YELLOW}Retrying...{page}. (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)
-            else:
-                print(f"{Fore.RED}{page} NO DOMAINS{Style.RESET_ALL}")
-                break
-        except Exception as e:
-            print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
-            break
-def domain_to_ip(domain_name):
-    if len(domain_name) > 253 or len(domain_name) == 0:
-        return None
     try:
-        domain_name.encode('idna')
-        ip_address = socket.gethostbyname(domain_name)
-        return ip_address
-    except (socket.gaierror, UnicodeError):
-        return None
+        response = requests.get(url)
+        response.raise_for_status()
+        body = response.json()
+        if not body.get('domains') or isinstance(body['domains'], str):
+            print(f"{Fore.YELLOW}No Data on page[{page}]. please wait until grabbing done...{Style.RESET_ALL}")
+            sys.exit(0)
+        print(f"page [{page}] -> domains found [{len(body['domains'])}]")
+        with file_lock, open(output_file, "a") as f:
+            for domain in body['domains']:
+                if isinstance(domain, str) and domain.strip():
+                    f.write(domain + "\n")
+        return True
+    except requests.exceptions.HTTPError as http_err:
+        if response.status_code in [502, 520, 500]:
+            print(f"{Fore.YELLOW}Retrying... page {page}. (Waiting for the server to respond){Style.RESET_ALL}")
+            sleep(2)
+        else:
+            print(f"{Fore.RED}page {page} NO DOMAINS{Style.RESET_ALL}")
+        return False
+    except Exception as e:
+        print(f"{Fore.RED}Error during Grab by Date: {e}{Style.RESET_ALL}")
+        return False
 def domain_to_ip_tool():
     try:
         print(Fore.GREEN + "Domain to IP tool started..." + Style.RESET_ALL)
@@ -345,23 +354,32 @@ def main():
                 else:
                     print(f"{Fore.RED}Invalid input. Please enter a number between 1 and 6.{Style.RESET_ALL}")
             if choice == 1:
-                print(Fore.GREEN + "[ RverseIP started... ]" + Style.RESET_ALL)
+                print(Fore.GREEN + "[ ReverseIP started... ]" + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ").strip()
+                filter_domain = input("$ filter domain [y/n]: ").strip().lower()
+
+                domain_filter = None
+                if filter_domain == 'y':
+                    domain_filter = input("$ domain yang akan di ambil [ ex : .id ]: ").strip()
+
                 auto_domain_to_ip = input("$ auto domain to ip [ Y/N ]: ").strip().lower()
                 output_file = input("$ save to: ").strip()
                 thread_count = int(input("$ enter thread count: "))
+
                 with open(input_list, 'r') as f:
                     items = [item.strip() for item in f.readlines()]
+
                 def process_and_reverse(domain_or_ip):
                     if auto_domain_to_ip == 'y':
                         ip = domain_to_ip(domain_or_ip)
                         if ip:
                             print(f"[{Fore.GREEN}{domain_or_ip} -> {ip}{Style.RESET_ALL}] Converting domains to IP addresses...")
-                            reverse_ip(ip, apikey, output_file)
+                            reverse_ip(ip, apikey, output_file, domain_filter)
                         else:
                             print(f"[{Fore.RED}Failed to convert domain: {domain_or_ip}{Style.RESET_ALL}]")
                     else:
-                        reverse_ip(domain_or_ip, apikey, output_file)
+                        reverse_ip(domain_or_ip, apikey, output_file, domain_filter)
+
                 with ThreadPoolExecutor(max_workers=thread_count) as executor:
                     executor.map(process_and_reverse, items)
             elif choice == 2:
@@ -412,7 +430,7 @@ def display_header():
     print(Fore.CYAN + '╚═════╝░╚═════╝░╚═════╝░╚═╝░░╚═╝╚══════╝░░░╚═╝░░░')
     print(Fore.WHITE + " - developed by Eclipse Security Labs")
     print(Fore.WHITE + " - website : https://eclipsesec.tech/")
-    print(Fore.GREEN + " - version : 1.5.0")
+    print(Fore.GREEN + " - version : 1.5.1")
     print(Style.RESET_ALL)
 def open_registration_page():
     registration_url = "https://eclipsesec.tech/register"
