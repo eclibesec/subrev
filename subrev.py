@@ -13,8 +13,6 @@ import getpass
 import webbrowser
 import json
 
-from domi import domain_to_ip
-
 
 init()
 REQUIRED_MODULES = ['requests', 'colorama']
@@ -78,6 +76,20 @@ def clean_domain(domain):
         if cleaned_domain.startswith(prefix):
             cleaned_domain = cleaned_domain[len(prefix):]
     return cleaned_domain
+def domain_to_ip(domain_name):
+    if not is_valid_domain(domain_name):
+        return None
+    try:
+        domain_name.encode('idna')
+        ip_address = socket.gethostbyname(domain_name)
+        return ip_address
+    except (socket.gaierror, UnicodeError):
+        return None
+def is_valid_domain(domain):
+    if len(domain) > 253 or len(domain) == 0:
+        return False
+    labels = domain.split('.')
+    return all(0 < len(label) <= 63 for label in labels)
 def remove_duplicates(output_file):
     try:
         with open(output_file, "r", encoding="utf-8") as file:
@@ -147,12 +159,10 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
                 for domain in body['domains']:
                     if domain_filter:
                         if domain.endswith(domain_filter):
-                            print(f"[{Fore.GREEN}Saving domain: {domain}{Style.RESET_ALL}]")
                             with file_lock:
                                 with open(output_file, "a") as f:
                                     f.write(domain + "\n")
                     else:
-                        print(f"[{Fore.GREEN}Saving domain: {domain}{Style.RESET_ALL}]")
                         with file_lock:
                             with open(output_file, "a") as f:
                                 f.write(domain + "\n")
