@@ -383,10 +383,7 @@ def main():
                     if auto_domain_to_ip == 'y':
                         ip = domain_to_ip(domain_or_ip)
                         if ip:
-                            print(f"[{Fore.GREEN}{domain_or_ip} -> {ip}{Style.RESET_ALL}] Converting domains to IP addresses...")
                             reverse_ip(ip, apikey, output_file, domain_filter)
-                        else:
-                            print(f"[{Fore.RED}Failed to convert domain: {domain_or_ip}{Style.RESET_ALL}]")
                     else:
                         reverse_ip(domain_or_ip, apikey, output_file, domain_filter)
 
