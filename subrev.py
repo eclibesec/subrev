@@ -151,10 +151,12 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
+
             if body.get("error") == "Invalid request type.":
                 print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
                 break
-            if body.get('domains'):
+
+            if body.get("domains") and body['domains'] != "No data available":
                 print(f"[{Fore.GREEN}reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
                 for domain in body['domains']:
                     if domain_filter:
@@ -167,6 +169,11 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
                             with open(output_file, "a") as f:
                                 f.write(domain + "\n")
                 break
+            
+            # Tambahkan kategori "no data"
+            print(f"{Fore.YELLOW}[ No data for IP - {ip} ]{Style.RESET_ALL}")
+            break
+            
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500 and "Invalid request type." in response.text:
                 print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
@@ -180,6 +187,7 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
         except Exception as e:
             print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
             break
+
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     while True:
@@ -187,21 +195,27 @@ def subdomain_finder(domain, apikey, output_file):
             response = requests.get(url)
             response.raise_for_status()
             body = response.json()
+
             if body.get("error") == "Invalid request type.":
                 print(f"{Fore.RED}Error: Invalid request type for {domain}. Skipping...{Style.RESET_ALL}")
                 break
 
-            if body.get('subdomains'):
+            if body.get('subdomains') and body['subdomains'] != "No data available":
                 print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
                 with file_lock, open(output_file, "a") as f:
                     for subdomain in body['subdomains']:
                         f.write(subdomain + "\n")
                 break
+            
+            # Tambahkan kategori "no data"
+            print(f"{Fore.YELLOW}[ No data for domain - {domain} ]{Style.RESET_ALL}")
+            break
+            
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 500 and "Invalid request type." in response.text:
                 print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
                 break
-            if response.status_code in [502,520,500]:
+            if response.status_code in [502, 520, 500]:
                 print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
                 sleep(2)
             else:
@@ -210,15 +224,21 @@ def subdomain_finder(domain, apikey, output_file):
         except Exception as e:
             print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
             break
+
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     try:
         response = requests.get(url)
         response.raise_for_status()
         body = response.json()
+
         if not body.get('domains') or isinstance(body['domains'], str):
-            print(f"{Fore.YELLOW}No Data on page[{page}]. please wait until grabbing done...{Style.RESET_ALL}")
-            sys.exit(0)
+            if body.get("error") == "Request limit reached. Please wait until it resets.":
+                print(f"{Fore.RED}API limit reached, please extend the limit to Telegram @no4meee{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}No Data on page[{page}]. please wait until grabbing done...{Style.RESET_ALL}")
+            return False
+
         print(f"page [{page}] -> domains found [{len(body['domains'])}]")
         with file_lock, open(output_file, "a") as f:
             for domain in body['domains']:
