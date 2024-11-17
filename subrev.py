@@ -94,7 +94,9 @@ def remove_duplicates(output_file):
     try:
         with open(output_file, "r", encoding="utf-8") as file:
             lines = file.readlines()
+        print(f"Original lines: {lines}")
         unique_lines = list(set(line.strip() for line in lines))
+        print(f"Unique lines: {unique_lines}")
         with open(output_file, "w", encoding="utf-8") as file:
             for line in sorted(unique_lines):
                 file.write(line + "\n")
@@ -112,7 +114,6 @@ def save_api_key(apikey):
 def load_api_key():
     config_folder = 'subrev'
     config_file_path = os.path.join(config_folder, 'config.json')
-
     if os.path.exists(config_file_path):
         with open(config_file_path, 'r', encoding='utf-8') as config_file:
             config_data = json.load(config_file)
@@ -122,7 +123,7 @@ def validate_api_key(apikey):
     url = f"https://eclipsesec.tech/api/?apikey={apikey}&validate=true"
     debug_file_path = "debug.txt"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         body = response.json()
         try:
@@ -130,101 +131,78 @@ def validate_api_key(apikey):
                 debug_file.write(f"API Response: {body}\n")
         except OSError as e:
             print(f"{Fore.RED}Failed to write to debug file: {str(e)}{Style.RESET_ALL}")
-        
+        if body.get("error") == "User not found!":
+            print(f"{Fore.RED}Error: {body.get('error')}{Style.RESET_ALL}")
+            return "", False
+        if body.get("error") == "Request limit reached. Please wait until it resets.":
+            print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
+            return "", False
         if body.get('status') == "valid":
             save_api_key(apikey)
             return body.get('user'), True
         else:
             print(f"{Fore.RED}Invalid API key: {body.get('message', 'Unknown error')}{Style.RESET_ALL}")
+            return "", False
+    except requests.exceptions.HTTPError as http_err:
+        print(f"{Fore.RED}HTTP error during API key validation: {http_err}{Style.RESET_ALL}")
+        return "", False
+
+    except requests.exceptions.RequestException as req_err:
+        print(f"{Fore.RED}Error during API key validation: {req_err}{Style.RESET_ALL}")
+        return "", False
     except Exception as e:
         try:
             with open(debug_file_path, "a", encoding="utf-8") as debug_file:
-                debug_file.write(f"Error during API key validation: {str(e)}\n")
+                debug_file.write(f"Unhandled error during API key validation: {str(e)}\n")
         except OSError as file_err:
             print(f"{Fore.RED}Failed to write error log: {str(file_err)}{Style.RESET_ALL}")
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
-    return "", False
+        return "", False
 def reverse_ip(ip, apikey, output_file, domain_filter=None):
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
-    while True:
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            body = response.json()
-
-            if body.get("error") == "Invalid request type.":
-                print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
-                break
-
-            if body.get("domains") and body['domains'] != "No data available":
-                print(f"[{Fore.GREEN}reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
-                for domain in body['domains']:
-                    if domain_filter:
-                        if domain.endswith(domain_filter):
-                            with file_lock:
-                                with open(output_file, "a") as f:
-                                    f.write(domain + "\n")
-                    else:
-                        with file_lock:
-                            with open(output_file, "a") as f:
-                                f.write(domain + "\n")
-                break
-            
-            # Tambahkan kategori "no data"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        body = response.json()
+        if body.get("error") == "Request limit reached. Please wait until it resets.":
+            print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
+            return
+        if body.get("domains") and body['domains'] != "No data available":
+            print(f"[{Fore.GREEN}Reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
+            with file_lock:
+                with open(output_file, "a") as f:
+                    for domain in body['domains']:
+                        if domain_filter and domain.endswith(domain_filter):
+                            f.write(domain + "\n")
+                        elif not domain_filter:
+                            f.write(domain + "\n")
+        else:
             print(f"{Fore.YELLOW}[ No data for IP - {ip} ]{Style.RESET_ALL}")
-            break
-            
-        except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 500 and "Invalid request type." in response.text:
-                print(f"{Fore.RED}[ bad ip - {ip} ]{Style.RESET_ALL}")
-                break
-            if response.status_code in [502, 520]:
-                print(f"{Fore.YELLOW}[ Retrying ] -> {ip} (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)
-            else:
-                print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
-                break
-        except Exception as e:
-            print(f"{Fore.RED}[ bad ip ] - [{ip}]{Style.RESET_ALL}")
-            break
+    except requests.exceptions.HTTPError as http_err:
+        print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
 
+    except requests.exceptions.RequestException as req_err:
+        print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
-    while True:
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            body = response.json()
-
-            if body.get("error") == "Invalid request type.":
-                print(f"{Fore.RED}Error: Invalid request type for {domain}. Skipping...{Style.RESET_ALL}")
-                break
-
-            if body.get('subdomains') and body['subdomains'] != "No data available":
-                print(f"[{Fore.GREEN}extracting {domain}] -> [{len(body['subdomains'])} subdomains]{Style.RESET_ALL}]")
-                with file_lock, open(output_file, "a") as f:
-                    for subdomain in body['subdomains']:
-                        f.write(subdomain + "\n")
-                break
-            
-            # Tambahkan kategori "no data"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        body = response.json()
+        if body.get("error") == "Request limit reached. Please wait until it resets.":
+            print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
+            return
+        if body.get('subdomains') and body['subdomains'] != "No data available":
+            print(f"[{Fore.GREEN}Extracting {domain} -> {len(body['subdomains'])} subdomains{Style.RESET_ALL}]")
+            with file_lock, open(output_file, "a") as f:
+                for subdomain in body['subdomains']:
+                    f.write(subdomain + "\n")
+        else:
             print(f"{Fore.YELLOW}[ No data for domain - {domain} ]{Style.RESET_ALL}")
-            break
-            
-        except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 500 and "Invalid request type." in response.text:
-                print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
-                break
-            if response.status_code in [502, 520, 500]:
-                print(f"{Fore.YELLOW}[ Retrying ] -> {domain} (Waiting for the server to respond){Style.RESET_ALL}")
-                sleep(2)
-            else:
-                print(f"{Fore.RED}Subdomain Finder failed: {http_err}{Style.RESET_ALL}")
-                break
-        except Exception as e:
-            print(f"{Fore.RED}[ bad - domain] - [{domain}]{Style.RESET_ALL}")
-            break
-
+    except requests.exceptions.HTTPError as http_err:
+        print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     try:
