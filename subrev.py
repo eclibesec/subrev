@@ -203,6 +203,33 @@ def subdomain_finder(domain, apikey, output_file):
         print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
     except requests.exceptions.RequestException as req_err:
         print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
+def discovery_domain_engine(apikey):
+    print(Fore.GREEN + "[ Discovery Domain Engine started ] ..." + Style.RESET_ALL)
+    extension_filter = input("Enter domain extension filter (e.g., 'id', 'com', leave empty for all): ").strip()
+    num_scrapes = int(input("Enter how many times to scrape: ").strip())
+    delay = float(input("Enter delay between requests (in seconds): ").strip())
+    output_file = input("Save results to (output file): ").strip()
+    url = f"https://eclipsesec.tech/api/?discovery=true&apikey={apikey}"
+    if extension_filter:
+        url += f"&extension={extension_filter}"
+    for i in range(num_scrapes):
+        print(f"{Fore.CYAN}[Scraping attempt {i + 1}... ]{Style.RESET_ALL}")
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            body = response.json()
+            if "domains" in body and isinstance(body["domains"], list):
+                domains = body["domains"]
+                print(f"{Fore.GREEN}Found {len(domains)} domains.{Style.RESET_ALL}")
+                with file_lock, open(output_file, "a", encoding="utf-8") as f:
+                    for domain in domains:
+                        f.write(domain + "\n")
+            else:
+                print(f"{Fore.YELLOW}[No domains found in this scrape]{Style.RESET_ALL}")
+            sleep(delay)
+        except requests.exceptions.RequestException as e:
+            print(f"{Fore.RED}Request error: {str(e)}{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}Discovery completed. Results saved to {output_file}.{Style.RESET_ALL}")
 def grab_by_date(page, apikey, date, output_file, bad_domains_file='bad_domains.txt'):
     url = f"https://eclipsesec.tech/api/?bydate={date}&page={page}&apikey={apikey}"
     try:
@@ -349,10 +376,11 @@ def main():
             print(Fore.GREEN + "╭─" + Fore.GREEN + "「" + Fore.CYAN + f" Welcome {user} " + Fore.GREEN + "」" + Style.RESET_ALL)
             print(Fore.GREEN + "│" + Style.RESET_ALL + " 1. Reverse IP")
             print(Fore.GREEN + "│" + Style.RESET_ALL + " 2. Subdomain Finder")
-            print(Fore.GREEN + "│" + Style.RESET_ALL + " 3. Grab by Date")
-            print(Fore.GREEN + "│" + Style.RESET_ALL + " 4. Domain to IP")
-            print(Fore.GREEN + "│" + Style.RESET_ALL + " 5. Remove Duplicates list")
-            print(Fore.GREEN + "│" + Style.RESET_ALL + " 6. Check for Updates")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 3. Discovery Domain Engine")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 4. Grab by Date")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 5. Domain to IP")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 6. Remove Duplicates list")
+            print(Fore.GREEN + "│" + Style.RESET_ALL + " 7. Check for Updates")
             print(Fore.GREEN + "╰─────────────────────────" + Style.RESET_ALL)
             while True:
                 choice_input = input("$ choose: ").strip()
@@ -360,7 +388,7 @@ def main():
                     choice = int(choice_input)
                     break
                 else:
-                    print(f"{Fore.RED}Invalid input. Please enter a number between 1 and 6.{Style.RESET_ALL}")
+                    print(f"{Fore.RED}Invalid input. Please enter a number between 1 and 7.{Style.RESET_ALL}")
             if choice == 1:
                 print(Fore.GREEN + "[ ReverseIP started... ]" + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ").strip()
@@ -369,7 +397,6 @@ def main():
                 domain_filter = None
                 if filter_domain == 'y':
                     domain_filter = input("$ domain yang akan di ambil [ ex : .id ]: ").strip()
-
                 auto_domain_to_ip = input("$ auto domain to ip [ Y/N ]: ").strip().lower()
                 output_file = input("$ save to: ").strip()
                 thread_count = int(input("$ enter thread count: "))
@@ -384,7 +411,6 @@ def main():
                             reverse_ip(ip, apikey, output_file, domain_filter)
                     else:
                         reverse_ip(domain_or_ip, apikey, output_file, domain_filter)
-
                 with ThreadPoolExecutor(max_workers=thread_count) as executor:
                     executor.map(process_and_reverse, items)
             elif choice == 2:
@@ -399,6 +425,8 @@ def main():
                         executor.submit(subdomain_finder, domain, apikey, output_file)
                 remove_duplicates(output_file)
             elif choice == 3:
+                discovery_domain_engine(apikey)
+            elif choice == 4:
                 print(Fore.GREEN + "[ Grab by date started ] ..." + Style.RESET_ALL)
                 date = input("$ Enter date (YYYY-MM-DD): ")
                 start_page = int(input("$ Page [ start from ]: "))
@@ -408,12 +436,12 @@ def main():
                 with ThreadPoolExecutor(max_workers=thread_count) as executor:
                     for page in range(start_page, end_page + 1):
                         executor.submit(grab_by_date, page, apikey, date, output_file)
-            elif choice == 4:
-                domain_to_ip_tool()
             elif choice == 5:
+                domain_to_ip_tool()
+            elif choice == 6:
                 output_file = input("$ Enter the output file to clean duplicates: ")
                 remove_duplicates(output_file)
-            elif choice == 6:
+            elif choice == 7:
                 check_for_updates()
             else:
                 print(f"{Fore.RED}Invalid choice. Please select a valid option.{Style.RESET_ALL}")
@@ -435,7 +463,7 @@ def display_header():
     print(Fore.CYAN + '╚═════╝░╚═════╝░╚═════╝░╚═╝░░╚═╝╚══════╝░░░╚═╝░░░')
     print(Fore.WHITE + " - developed by Eclipse Security Labs")
     print(Fore.WHITE + " - website : https://eclipsesec.tech/")
-    print(Fore.GREEN + " - version : 1.5.1")
+    print(Fore.GREEN + " - version : 1.5.2")
     print(Style.RESET_ALL)
 def open_registration_page():
     registration_url = "https://eclipsesec.tech/register"
