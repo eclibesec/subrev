@@ -44,6 +44,7 @@ The required modules will be auto-installed if they are missing. These modules i
 - **Once you run the tool, you will see a menu with several options:**
   - **Reverse IP**
   - **Subdomain Finder**
+  - **Discovery Domain Engine**
   - **Grab by Date**
   - **Domain to IP**
   - **Remove Duplicates**
