@@ -8,6 +8,7 @@
 
 - **Reverse IP**: Processes a list of IP addresses to find all related domains.
 - **Subdomain Finder**: Finds subdomains from a given list of domains.
+- **Discocvery domain grabber** : [ NEW ]
 - **Grab by Date**: Retrieves a list of domains found on a specific date.
 - **Domain to IP**: Converts a list of domains to their corresponding IP addresses.
 - **Remove Duplicates**: Removes duplicate entries from the output file.
