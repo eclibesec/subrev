@@ -15,6 +15,8 @@ import json
 
 
 init()
+processed_ips = set()
+written_domains = set()
 REQUIRED_MODULES = ['requests', 'colorama']
 file_lock = threading.Lock()
 REPO_OWNER = 'eclibesec'
@@ -159,6 +161,11 @@ def validate_api_key(apikey):
         print(f"{Fore.RED}API key validation failed: {e}{Style.RESET_ALL}")
         return "", False
 def reverse_ip(ip, apikey, output_file, domain_filter=None):
+    global processed_ips, written_domains
+    if ip in processed_ips:
+        print(f"{Fore.YELLOW}[ {ip} - sameIP ]{Style.RESET_ALL}")
+        return
+    processed_ips.add(ip)
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     try:
         response = requests.get(url, timeout=10)
@@ -173,16 +180,17 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
                 with open(output_file, "a") as f:
                     for domain in body['domains']:
                         if domain_filter and domain.endswith(domain_filter):
-                            f.write(domain + "\n")
+                            if domain not in written_domains:
+                                f.write(domain + "\n")
+                                written_domains.add(domain)
                         elif not domain_filter:
-                            f.write(domain + "\n")
+                            if domain not in written_domains:
+                                f.write(domain + "\n")
+                                written_domains.add(domain)
         else:
             print(f"{Fore.YELLOW}[ No data for IP - {ip} ]{Style.RESET_ALL}")
-    except requests.exceptions.HTTPError as http_err:
-        print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
-
-    except requests.exceptions.RequestException as req_err:
-        print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
+    except:
+        pass
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     try:
