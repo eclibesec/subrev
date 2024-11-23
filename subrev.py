@@ -75,9 +75,10 @@ def clean_domain(domain):
                          'slot-bri.']
     cleaned_domain = domain
     for prefix in FILTERED_PREFIXES:
-        if cleaned_domain.startswith(prefix):
-            cleaned_domain = cleaned_domain[len(prefix):]
-    return cleaned_domain
+        if domain.startswith(prefix):
+            domain = domain[len(prefix):]  # Hapus prefiks
+            break  # Keluar setelah satu prefiks cocok
+    return domain
 def domain_to_ip(domain_name):
     if not is_valid_domain(domain_name):
         return None
@@ -202,15 +203,21 @@ def subdomain_finder(domain, apikey, output_file):
             return
         if body.get('subdomains') and body['subdomains'] != "No data available":
             print(f"[{Fore.GREEN}Extracting {domain} -> {len(body['subdomains'])} subdomains{Style.RESET_ALL}]")
+            unique_domains = set()
+            for subdomain in body['subdomains']:
+                cleaned = clean_domain(subdomain)
+                if cleaned:
+                    unique_domains.add(cleaned)
             with file_lock, open(output_file, "a") as f:
-                for subdomain in body['subdomains']:
-                    f.write(subdomain + "\n")
+                for unique_domain in sorted(unique_domains):
+                    f.write(unique_domain + "\n")
         else:
             print(f"{Fore.YELLOW}[ No data for domain - {domain} ]{Style.RESET_ALL}")
     except requests.exceptions.HTTPError as http_err:
         print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
     except requests.exceptions.RequestException as req_err:
         print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
+
 def discovery_domain_engine(apikey):
     print(Fore.GREEN + "[ Discovery Domain Engine started ] ..." + Style.RESET_ALL)
     extension_filter = input("Enter domain extension filter (e.g., 'id', 'com', leave empty for all): ").strip()
