@@ -6,8 +6,11 @@ import shutil
 import zipfile
 import socket
 import threading
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
+import time
 from colorama import init, Fore, Style
 import getpass
 import webbrowser
@@ -97,9 +100,7 @@ def remove_duplicates(output_file):
     try:
         with open(output_file, "r", encoding="utf-8") as file:
             lines = file.readlines()
-        print(f"Original lines: {lines}")
         unique_lines = list(set(line.strip() for line in lines))
-        print(f"Unique lines: {unique_lines}")
         with open(output_file, "w", encoding="utf-8") as file:
             for line in sorted(unique_lines):
                 file.write(line + "\n")
@@ -201,10 +202,12 @@ def subdomain_finder(domain, apikey, output_file):
         if body.get("error") == "Request limit reached. Please wait until it resets.":
             print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
             return
-        if body.get('subdomains') and body['subdomains'] != "No data available":
-            print(f"[{Fore.GREEN}Extracting {domain} -> {len(body['subdomains'])} subdomains{Style.RESET_ALL}]")
+        result = body.get("result", {})
+        domains = result.get("domains", [])
+        if domains:
+            print(f"[{Fore.GREEN}Extracting {domain} -> {len(domains)} subdomains{Style.RESET_ALL}]")
             unique_domains = set()
-            for subdomain in body['subdomains']:
+            for subdomain in domains:
                 cleaned = clean_domain(subdomain)
                 if cleaned:
                     unique_domains.add(cleaned)
@@ -213,11 +216,8 @@ def subdomain_finder(domain, apikey, output_file):
                     f.write(unique_domain + "\n")
         else:
             print(f"{Fore.YELLOW}[ No data for domain - {domain} ]{Style.RESET_ALL}")
-    except requests.exceptions.HTTPError as http_err:
-        print(f"{Fore.RED}HTTP error: {http_err}{Style.RESET_ALL}")
-    except requests.exceptions.RequestException as req_err:
-        print(f"{Fore.RED}Request error: {req_err}{Style.RESET_ALL}")
-
+    except:
+        pass
 def discovery_domain_engine(apikey):
     print(Fore.GREEN + "[ Discovery Domain Engine started ] ..." + Style.RESET_ALL)
     extension_filter = input("Enter domain extension filter (e.g., 'id', 'com', leave empty for all): ").strip()
@@ -408,17 +408,13 @@ def main():
                 print(Fore.GREEN + "[ ReverseIP started... ]" + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ").strip()
                 filter_domain = input("$ filter domain [y/n]: ").strip().lower()
-
                 domain_filter = None
                 if filter_domain == 'y':
                     domain_filter = input("$ domain yang akan di ambil [ ex : .id ]: ").strip()
                 auto_domain_to_ip = input("$ auto domain to ip [ Y/N ]: ").strip().lower()
                 output_file = input("$ save to: ").strip()
-                thread_count = int(input("$ enter thread count: "))
-
                 with open(input_list, 'r') as f:
                     items = [item.strip() for item in f.readlines()]
-
                 def process_and_reverse(domain_or_ip):
                     if auto_domain_to_ip == 'y':
                         ip = domain_to_ip(domain_or_ip)
@@ -426,8 +422,9 @@ def main():
                             reverse_ip(ip, apikey, output_file, domain_filter)
                     else:
                         reverse_ip(domain_or_ip, apikey, output_file, domain_filter)
-                with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                with ThreadPoolExecutor(max_workers=10) as executor:
                     executor.map(process_and_reverse, items)
+
             elif choice == 2:
                 print(Fore.GREEN + "[ Subdomain finder started... ] " + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ")
