@@ -170,27 +170,26 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
     processed_ips.add(ip)
     url = f"https://eclipsesec.tech/api/?reverseip={ip}&apikey={apikey}"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url)  
         response.raise_for_status()
         body = response.json()
         if body.get("error") == "Request limit reached. Please wait until it resets.":
-            print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
             return
-        if body.get("domains") and body['domains'] != "No data available":
-            print(f"[{Fore.GREEN}Reversing {ip} -> {len(body['domains'])} domains found{Style.RESET_ALL}]")
-            with file_lock:
-                with open(output_file, "a") as f:
-                    for domain in body['domains']:
-                        if domain_filter and domain.endswith(domain_filter):
-                            if domain not in written_domains:
-                                f.write(domain + "\n")
-                                written_domains.add(domain)
-                        elif not domain_filter:
-                            if domain not in written_domains:
-                                f.write(domain + "\n")
-                                written_domains.add(domain)
-        else:
-            print(f"{Fore.YELLOW}[ No data for IP - {ip} ]{Style.RESET_ALL}")
+        if not body.get("domains") or body["domains"] == "No data available":
+            return
+        domains = body["domains"]
+        print(f"[{Fore.GREEN}Reversing {ip} -> {len(domains)} domains found{Style.RESET_ALL}]")
+        with file_lock:
+            with open(output_file, "a", encoding="utf-8") as f:
+                for domain in domains:
+                    if domain_filter and domain.endswith(domain_filter):
+                        if domain not in written_domains:
+                            f.write(domain + "\n")
+                            written_domains.add(domain)
+                    elif not domain_filter:
+                        if domain not in written_domains:
+                            f.write(domain + "\n")
+                            written_domains.add(domain)
     except:
         pass
 def subdomain_finder(domain, apikey, output_file):
