@@ -79,8 +79,8 @@ def clean_domain(domain):
     cleaned_domain = domain
     for prefix in FILTERED_PREFIXES:
         if domain.startswith(prefix):
-            domain = domain[len(prefix):]  # Hapus prefiks
-            break  # Keluar setelah satu prefiks cocok
+            domain = domain[len(prefix):]  
+            break
     return domain
 def domain_to_ip(domain_name):
     if not is_valid_domain(domain_name):
@@ -362,7 +362,7 @@ def apply_update(new_file, current_file):
         echo Waiting for the main program to close...
         ping 127.0.1.1 -n 5 > nul
         move /Y "{new_file}" "{current_file}"
-        start "" "{current_file}"
+        start "" "pyhton {current_file}"
         exit
         """
         batch_file = os.path.join(UPDATE_FOLDER, 'update.bat')
@@ -420,9 +420,8 @@ def main():
                             reverse_ip(ip, apikey, output_file, domain_filter)
                     else:
                         reverse_ip(domain_or_ip, apikey, output_file, domain_filter)
-                with ThreadPoolExecutor(max_workers=10) as executor:
+                with ThreadPoolExecutor(max_workers=15) as executor:
                     executor.map(process_and_reverse, items)
-
             elif choice == 2:
                 print(Fore.GREEN + "[ Subdomain finder started... ] " + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ")
