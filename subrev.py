@@ -195,13 +195,13 @@ def reverse_ip(ip, apikey, output_file, domain_filter=None):
 def subdomain_finder(domain, apikey, output_file):
     url = f"https://eclipsesec.tech/api/?subdomain={domain}&apikey={apikey}"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url)
         response.raise_for_status()
         body = response.json()
         if body.get("error") == "Request limit reached. Please wait until it resets.":
             print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
             return
-            domains = body["domains"]
+        domains = body["domains"]
         if domains:
             print(f"[{Fore.GREEN}Extracting {domain} -> {len(domains)} subdomains{Style.RESET_ALL}]")
             unique_domains = set()
@@ -427,10 +427,9 @@ def main():
                 print(Fore.GREEN + "[ Subdomain finder started... ] " + Style.RESET_ALL)
                 input_list = input("$ give me your file list: ")
                 output_file = input("$ save to: ")
-                thread_count = int(input("$ enter thread count: "))
                 with open(input_list, 'r') as f:
                     items = [item.strip() for item in f.readlines()]
-                with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                with ThreadPoolExecutor(max_workers=30) as executor:
                     for domain in items:
                         executor.submit(subdomain_finder, domain, apikey, output_file)
                 remove_duplicates(output_file)
