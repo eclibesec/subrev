@@ -201,8 +201,7 @@ def subdomain_finder(domain, apikey, output_file):
         if body.get("error") == "Request limit reached. Please wait until it resets.":
             print(f"{Fore.RED}API limit reached: {body.get('error')}{Style.RESET_ALL}")
             return
-        result = body.get("result", {})
-        domains = result.get("domains", [])
+            domains = body["domains"]
         if domains:
             print(f"[{Fore.GREEN}Extracting {domain} -> {len(domains)} subdomains{Style.RESET_ALL}]")
             unique_domains = set()
